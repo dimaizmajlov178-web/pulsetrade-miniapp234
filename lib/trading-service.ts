@@ -6,7 +6,7 @@ import {
   DEFAULT_ACCOUNT_ID,
   getAccountById,
   getOpenTrades,
-  getOrCreateAccount,
+  getOrCreateTelegramAccount,
   getRecentTrades,
   getTradeById,
   settleTradeRecord,
@@ -80,25 +80,28 @@ export async function settleExpiredTrades(
   );
 }
 
-export async function getTradingState(): Promise<TradingState> {
-  await getOrCreateAccount();
-  await settleExpiredTrades();
+export async function getTradingState(
+  telegramId: number | null = null
+): Promise<TradingState> {
+  const account = await getOrCreateTelegramAccount(telegramId);
+  await settleExpiredTrades(account.id);
 
-  const [account, trades, platformLimits] = await Promise.all([
-    getOrCreateAccount(),
-    getRecentTrades(DEFAULT_ACCOUNT_ID, tradeHistoryLimit),
+  const [freshAccount, trades, platformLimits] = await Promise.all([
+    getOrCreateTelegramAccount(telegramId),
+    getRecentTrades(account.id, tradeHistoryLimit),
     getPlatformLimits(),
   ]);
 
   return {
-    account: toPublicAccount(account),
+    account: toPublicAccount(freshAccount),
     trades: trades.map(toPublicTrade),
     limits: buildTradingLimits(platformLimits),
   };
 }
 
 export async function placeTrade(
-  input: CreateTradeInput
+  input: CreateTradeInput,
+  telegramId: number | null = null
 ): Promise<{ account: PublicAccount; trade: PublicTrade }> {
   const pair = getMarketPair(input.pairId);
 
@@ -126,9 +129,10 @@ export async function placeTrade(
     );
   }
 
-  await settleExpiredTrades();
+  const initialAccount = await getOrCreateTelegramAccount(telegramId);
+  await settleExpiredTrades(initialAccount.id);
 
-  const activeTrades = await getOpenTrades(DEFAULT_ACCOUNT_ID);
+  const activeTrades = await getOpenTrades(initialAccount.id);
 
   if (activeTrades.length >= maxActiveTrades) {
     throw new TradingError(
@@ -138,9 +142,9 @@ export async function placeTrade(
     );
   }
 
-  const initialAccount = await getOrCreateAccount();
+  const currentAccount = await getOrCreateTelegramAccount(telegramId);
   const initialBalance = roundMoney(
-    initialAccount.demoBalance + initialAccount.realBalance
+    currentAccount.demoBalance + currentAccount.realBalance
   );
 
   if (stake > initialBalance + 0.001) {
@@ -171,7 +175,7 @@ export async function placeTrade(
   const tradeId = crypto.randomUUID();
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const account = await getOrCreateAccount();
+    const account = await getOrCreateTelegramAccount(telegramId);
     const balance = roundMoney(account.demoBalance + account.realBalance);
 
     if (stake > balance + 0.001) {

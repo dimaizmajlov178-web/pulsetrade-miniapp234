@@ -45,6 +45,7 @@ import type {
   SupportTicket,
   SupportTicketStatus,
 } from "@/lib/support";
+import { getTelegramAccountId } from "@/lib/telegram";
 import { docClient } from "./db";
 import { IndexName, TableName } from "./schema";
 
@@ -71,6 +72,7 @@ export interface Service {
 export interface AccountRecord {
   id: string;
   uid: number;
+  telegramId?: number;
   demoBalance: number;
   realBalance: number;
   withdrawalReserved?: number;
@@ -466,7 +468,8 @@ async function ensureAccountUid(
 }
 
 export async function getOrCreateAccount(
-  id: string = DEFAULT_ACCOUNT_ID
+  id: string = DEFAULT_ACCOUNT_ID,
+  telegramId?: number
 ): Promise<AccountRecord> {
   const existing = await getAccountById(id);
 
@@ -479,6 +482,7 @@ export async function getOrCreateAccount(
   const account: AccountRecord = {
     id,
     uid,
+    ...(telegramId === undefined ? {} : { telegramId }),
     demoBalance: INITIAL_DEMO_BALANCE,
     realBalance: INITIAL_REAL_BALANCE,
     withdrawalReserved: 0,
@@ -510,6 +514,16 @@ export async function getOrCreateAccount(
 
     throw error;
   }
+}
+
+export async function getOrCreateTelegramAccount(
+  telegramId: number | null
+): Promise<AccountRecord> {
+  if (telegramId === null) {
+    return getOrCreateAccount();
+  }
+
+  return getOrCreateAccount(getTelegramAccountId(telegramId), telegramId);
 }
 
 export async function getRecentTrades(

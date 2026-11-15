@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isDatabaseAvailable } from "@/lib/db";
 import { mockAccount, mockTrades } from "@/lib/mock-data";
+import { readTelegramId } from "@/lib/telegram";
 import { tradingLimits } from "@/lib/trading";
 import {
   getTradingState,
@@ -14,7 +15,9 @@ export const dynamic = "force-dynamic";
 
 const noStoreHeaders = { "Cache-Control": "no-store" };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const telegramId = readTelegramId(request.headers);
+
   if (!(await isDatabaseAvailable())) {
     return NextResponse.json(
       {
@@ -27,7 +30,7 @@ export async function GET() {
   }
 
   try {
-    return NextResponse.json(await getTradingState(), {
+    return NextResponse.json(await getTradingState(telegramId), {
       headers: noStoreHeaders,
     });
   } catch (error) {
@@ -41,6 +44,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const telegramId = readTelegramId(request.headers);
+
   if (!(await isDatabaseAvailable())) {
     return NextResponse.json(
       { error: "Ставки временно недоступны. Попробуйте позже." },
@@ -72,7 +77,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await placeTrade(parsed.data);
+    const result = await placeTrade(parsed.data, telegramId);
 
     return NextResponse.json(result, {
       status: 201,

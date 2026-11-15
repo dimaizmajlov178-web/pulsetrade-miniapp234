@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { getTelegramRequestHeaders } from "@/lib/telegram";
 import {
   tradingLimits,
   type PublicAccount,
@@ -46,6 +47,7 @@ function readErrorMessage(body: unknown, fallback: string): string {
 async function requestState(): Promise<TradingResponse> {
   const response = await fetch("/api/trades", {
     cache: "no-store",
+    headers: getTelegramRequestHeaders(),
   });
 
   const body: unknown = await response.json().catch(() => null);
@@ -227,7 +229,10 @@ export function useTrading() {
       try {
         const response = await fetch("/api/trades", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...getTelegramRequestHeaders(),
+          },
           body: JSON.stringify(input),
         });
 

@@ -625,5 +625,50 @@ tasks:
       появилась вкладка «Рефералы»: ссылка INF_<UID> с копированием, процент и
       реферальный баланс из БД, число приглашённых и вывод реферальных от $10.
       Бэкенд сохраняет referrer_id по startapp и начисляет процент с
-      подтверждённых депозитов; основная реализация — components/referral-panel.tsx,
-      lib/referral-service.ts, lib/models.ts и app/api/referrals."
+      подтверждённых депозитов; основная реализация —
+      components/referral-panel.tsx, lib/referral-service.ts, lib/models.ts и
+      app/api/referrals."
+  - id: task-1094
+    title: >-
+      В проекте есть баг: баланс и аккаунт не привязаны к Telegram ID. Все
+      пользователи видят один и тот же аккаунт.
+
+
+      Испра...
+    description: >-
+      В проекте есть баг: баланс и аккаунт не привязаны к Telegram ID. Все
+      пользователи видят один и тот же аккаунт.
+
+
+      Исправь это:
+
+      1. В фронтенде (в компоненте TradingTerminal или в контексте) при
+      инициализации получай Telegram ID из
+      `window.Telegram.WebApp.initDataUnsafe.user.id`.
+
+      2. Передавай этот ID в заголовке `x-telegram-id` во всех запросах к
+      `/api/user/balance` и `/api/trades`.
+
+      3. На бэкенде (в `app/api/user/balance/route.ts` и
+      `app/api/trades/route.ts`) читай этот заголовок и используй его для
+      поиска/создания пользователя в базе данных проекта.
+
+
+      Убедись, что при заходе с разных аккаунтов создаются разные пользователи с
+      разными UID (начиная с 624839).
+
+
+      Ограничение платформы: PostgreSQL не используется, данные хранятся в
+      текущей DynamoDB-совместимой базе проекта — работай с ней, не добавляя
+      новый слой хранения.
+    status: completed
+    acceptance_criteria:
+      - Запрос пользователя выполнен полностью
+    meta:
+      quick_implement_marker: quick_implement:call-6a77e472-b7f1-4dbb-8d0d-212eedff4acc
+    summary: >-
+      Аккаунт и баланс привязаны к Telegram ID: фронтенд читает
+      window.Telegram.WebApp.initDataUnsafe.user.id и передаёт его в заголовке
+      x-telegram-id. Бэкенд /api/trades и новый /api/user/balance ищут или
+      создают отдельного пользователя DynamoDB с последовательным UID начиная с
+      624839 (lib/telegram.ts, lib/models.ts, lib/trading-service.ts).
